@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ITMC Bilingual Voice Trainer</title>
+<style>
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color-scheme: light dark;
+}
+body {
+  margin: 0;
+  background: Canvas;
+  color: CanvasText;
+}
+.wrap {
+  max-width: 1050px;
+  margin: 0 auto;
+  padding: 22px;
+}
+h1 { margin: 0 0 6px; font-size: clamp(25px, 4vw, 40px); }
+.sub { opacity:.8; margin:0 0 20px; }
+.panel {
+  border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: color-mix(in srgb, Canvas 96%, CanvasText 4%);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px,1fr));
+  gap: 12px;
+}
+label { font-weight: 650; display:block; margin-bottom:5px; }
+select, input[type="range"], button {
+  width:100%;
+  box-sizing:border-box;
+}
+select, button {
+  min-height: 44px;
+  border-radius: 11px;
+  border: 1px solid color-mix(in srgb, CanvasText 22%, transparent);
+  padding: 9px 11px;
+  font: inherit;
+}
+button { cursor:pointer; font-weight:700; }
+button.primary {
+  background: #2563eb;
+  color:white;
+  border-color:#2563eb;
+}
+button.stop {
+  background:#b91c1c;
+  color:white;
+  border-color:#b91c1c;
+}
+.controls {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px,1fr));
+  gap:9px;
+}
+.card {
+  text-align:center;
+  padding: 26px 14px;
+  border-radius: 18px;
+  border: 2px solid color-mix(in srgb, #2563eb 35%, transparent);
+}
+.vi {
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+.en {
+  font-size: clamp(30px, 5.5vw, 52px);
+  font-weight: 850;
+}
+.ipa {
+  font-size: clamp(18px, 2.7vw, 25px);
+  opacity:.72;
+  margin-top:8px;
+}
+.counter {
+  margin-top:12px;
+  opacity:.75;
+  font-weight:650;
+}
+.status {
+  min-height:24px;
+  margin-top:10px;
+  font-weight:650;
+}
+.small { font-size:.92rem; opacity:.8; }
+.voice-list {
+  max-height:220px;
+  overflow:auto;
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  display:none;
+  white-space:pre-wrap;
+}
+.words {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+.words th, .words td {
+  border-bottom:1px solid color-mix(in srgb, CanvasText 14%, transparent);
+  padding:8px;
+  text-align:left;
+  vertical-align:top;
+}
+.words tr.current {
+  outline:2px solid #2563eb;
+  outline-offset:-2px;
+}
+.rangeRow {
+  display:grid;
+  grid-template-columns: 1fr 70px;
+  align-items:center;
+  gap:8px;
+}
+@media (max-width:600px) {
+  .wrap { padding:12px; }
+  .panel { padding:12px; border-radius:14px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ITMC Bilingual Voice Trainer</h1>
+  <p class="sub">Free browser-based practice using the speech voices available to your browser/computer. IPA is displayed but never spoken.</p>
+
+  <div class="panel">
+    <div class="grid">
+      <div>
+        <label for="section">Vocabulary section</label>
+        <select id="section"></select>
+      </div>
+      <div>
+        <label for="viVoice">Vietnamese voice</label>
+        <select id="viVoice"></select>
+      </div>
+      <div>
+        <label for="enVoice">English voice</label>
+        <select id="enVoice"></select>
+      </div>
+      <div>
+        <label for="order">Reading order</label>
+        <select id="order">
+          <option value="vi-en">Vietnamese → English</option>
+          <option value="en-vi">English → Vietnamese</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:12px">
+      <div>
+        <label for="rate">Voice speed</label>
+        <div class="rangeRow">
+          <input id="rate" type="range" min="0.5" max="1.25" value="0.82" step="0.05">
+          <output id="rateOut">0.82×</output>
+        </div>
+      </div>
+      <div>
+        <label for="pause">Child repeat pause</label>
+        <div class="rangeRow">
+          <input id="pause" type="range" min="0" max="6" value="3" step="0.5">
+          <output id="pauseOut">3 s</output>
+        </div>
+      </div>
+      <div>
+        <label for="repeat">English repetitions</label>
+        <select id="repeat">
+          <option value="1">1 time</option>
+          <option value="2" selected>2 times</option>
+          <option value="3">3 times</option>
+        </select>
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button id="voicesBtn">Show voices on this computer</button>
+      </div>
+    </div>
+
+    <div class="controls" style="margin-top:12px">
+      <button id="testVi">Test Vietnamese</button>
+      <button id="testEn">Test English</button>
+      <button id="playOne">▶ Play this word</button>
+      <button id="playAll" class="primary">▶ Play section</button>
+      <button id="pauseBtn">⏸ Pause / Resume</button>
+      <button id="stopBtn" class="stop">■ Stop</button>
+    </div>
+
+    <div id="voiceList" class="voice-list" style="margin-top:12px"></div>
+    <p class="small">Tip: choose a voice whose language begins with <b>vi</b> for Vietnamese and <b>en</b> for English. “Local” means the browser reports that the voice is installed locally.</p>
+  </div>
+
+  <div class="panel">
+    <div class="card">
+      <div id="viText" class="vi"></div>
+      <div id="enText" class="en"></div>
+      <div id="ipaText" class="ipa"></div>
+      <div id="counter" class="counter"></div>
+      <div id="status" class="status"></div>
+    </div>
+    <div class="controls" style="margin-top:12px">
+      <button id="prev">← Previous</button>
+      <button id="next">Next →</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <details>
+      <summary><b>Show all words in this section</b></summary>
+      <div style="overflow:auto">
+        <table class="words">
+          <thead><tr><th>#</th><th>Vietnamese</th><th>English</th><th>IPA</th></tr></thead>
+          <tbody id="wordRows"></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+</div>
+
+<script>
+const sections = [{"title": "1. Số học và Phép tính (Arithmetic & Operations)", "items": [{"n": "1", "en": "Sum", "ipa": "/sʌm/", "vi": "Tổng"}, {"n": "2", "en": "Difference", "ipa": "/ˈdɪfrəns/", "vi": "Hiệu"}, {"n": "3", "en": "Product", "ipa": "/ˈprɒdʌkt/", "vi": "Tích"}, {"n": "4", "en": "Quotient", "ipa": "/ˈkwəʊʃnt/", "vi": "Thương"}, {"n": "5", "en": "Plus", "ipa": "/plʌs/", "vi": "Cộng"}, {"n": "6", "en": "Minus", "ipa": "/ˈmaɪnəs/", "vi": "Trừ"}, {"n": "7", "en": "Add", "ipa": "/æd/", "vi": "Cộng (động từ)"}, {"n": "8", "en": "Subtract", "ipa": "/səbˈtrækt/", "vi": "Trừ (động từ)"}, {"n": "9", "en": "Take away", "ipa": "/teɪk əˈweɪ/", "vi": "Trừ, lấy đi"}, {"n": "10", "en": "Multiplication", "ipa": "/ˌmʌltɪplɪˈkeɪʃn/", "vi": "Phép nhân"}, {"n": "11", "en": "Times / Multiplied by", "ipa": "/taɪmz/ - /ˈmʌltɪplaɪd baɪ/", "vi": "Nhân với"}, {"n": "12", "en": "Divide", "ipa": "/dɪˈvaɪd/", "vi": "Chia"}, {"n": "13", "en": "Subtraction", "ipa": "/səbˈtrækʃn/", "vi": "Phép trừ"}, {"n": "14", "en": "Operation", "ipa": "/ˌɒpəˈreɪʃn/", "vi": "Phép tính"}, {"n": "15", "en": "Calculate", "ipa": "/ˈkælkjuleɪt/", "vi": "Tính"}, {"n": "16", "en": "Digit", "ipa": "/ˈdɪdʒɪt/", "vi": "Chữ số"}, {"n": "17", "en": "Units digit / Ones place", "ipa": "/ˈjuːnɪts ˈdɪdʒɪt/", "vi": "Chữ số hàng đơn vị"}, {"n": "18", "en": "Tens digit / Tens", "ipa": "/tɛnz ˈdɪdʒɪt/", "vi": "Chữ số hàng chục"}, {"n": "19", "en": "Hundreds place / Hundreds", "ipa": "/ˈhʌndrədz pleɪs/", "vi": "Hàng trăm"}, {"n": "20", "en": "Thousands", "ipa": "/ˈθaʊzndz/", "vi": "Hàng nghìn"}, {"n": "21", "en": "Millions", "ipa": "/ˈmɪljənz/", "vi": "Hàng triệu"}, {"n": "22", "en": "Place / Place value", "ipa": "/pleɪs/ - /ˈpleɪs væljuː/", "vi": "Hàng / Giá trị hàng"}, {"n": "23", "en": "Even / Even number", "ipa": "/ˈiːvn ˈnʌmbə(r)/", "vi": "Chẵn / Số chẵn"}, {"n": "24", "en": "Odd / Odd number", "ipa": "/ɒd ˈnʌmbə(r)/", "vi": "Lẻ / Số lẻ"}, {"n": "25", "en": "Consecutive", "ipa": "/kənˈsekjətɪv/", "vi": "Liên tiếp"}, {"n": "26", "en": "Sequence", "ipa": "/ˈsiːkwəns/", "vi": "Dãy, chuỗi"}, {"n": "27", "en": "Pattern / Number pattern", "ipa": "/ˈpætən/ - /ˈnʌmbə ˈpætn/", "vi": "Quy luật / Dãy số quy luật"}, {"n": "28", "en": "Term / Element", "ipa": "/tɜːm/ - /ˈelɪmənt/", "vi": "Số hạng"}, {"n": "29", "en": "Value / Result", "ipa": "/ˈvæljuː/ - /rɪˈzʌlt/", "vi": "Giá trị / Kết quả"}, {"n": "30", "en": "Average", "ipa": "/ˈævərɪdʒ/", "vi": "Trung bình"}, {"n": "31", "en": "Divisibility / Divisible by", "ipa": "/dɪˌvɪzəˈbɪləti/", "vi": "Sự chia hết / Chia hết cho"}, {"n": "32", "en": "Remainder", "ipa": "/rɪˈmeɪndə(r)/", "vi": "Số dư"}, {"n": "33", "en": "Factor / Factorise (Factorize)", "ipa": "/ˈfæktə(r)/ - /ˈfæktəraɪz/", "vi": "Thừa số / Phân tích thành thừa số"}, {"n": "34", "en": "Distinct", "ipa": "/dɪˈstɪŋkt/", "vi": "Phân biệt / Khác nhau"}, {"n": "35", "en": "Half", "ipa": "/hɑːf/", "vi": "Một nửa"}, {"n": "36", "en": "Round", "ipa": "/raʊnd/", "vi": "Làm tròn"}, {"n": "37", "en": "Decimal fraction", "ipa": "/ˈdesɪml ˈfrækʃn/", "vi": "Phân số thập phân"}, {"n": "38", "en": "Decimal point", "ipa": "/ˈdesɪml pɔɪnt/", "vi": "Dấu thập phân"}, {"n": "39", "en": "Numerator", "ipa": "/ˈnjuːməreɪtə(r)/", "vi": "Tử số"}, {"n": "40", "en": "Denominator", "ipa": "/dɪˈnɒmɪneɪtə(r)/", "vi": "Mẫu số"}, {"n": "41", "en": "Proper fraction", "ipa": "/ˈprɒpə ˈfrækʃn/", "vi": "Phân số có tử số nhỏ hơn mẫu số"}, {"n": "42", "en": "Improper fraction", "ipa": "/ɪmˈprɒpə ˈfrækʃn/", "vi": "Phân số có tử số lớn hơn mẫu số"}, {"n": "43", "en": "Simplest fraction / Simplify", "ipa": "/ˈsɪmplɪst ˈfrækʃn/", "vi": "Phân số tối giản / Rút gọn"}, {"n": "44", "en": "Mixed numbers", "ipa": "/mɪkst ˈnʌmbəz/", "vi": "Hỗn số"}, {"n": "45", "en": "Integer", "ipa": "/ˈɪntɪdʒə(r)/", "vi": "Số nguyên"}, {"n": "46", "en": "Negative", "ipa": "/ˈneɡətɪv/", "vi": "Âm"}, {"n": "47", "en": "Nonzero", "ipa": "/ˌnɒnˈzɪərəʊ/", "vi": "Khác 0"}, {"n": "48", "en": "Square root", "ipa": "/skweə ruːt/", "vi": "Căn bậc hai"}, {"n": "49", "en": "Equal / Equality / Equation", "ipa": "/ˈiːkwəl/ - /ɪˈkweɪʒn/", "vi": "Bằng / Đẳng thức / Phương trình"}, {"n": "50", "en": "Directly proportional to", "ipa": "/daɪˈrektli pəˈpɔːʃənl tə/", "vi": "Tỷ lệ thuận với"}, {"n": "51", "en": "Inversely proportional", "ipa": "/ˌɪnˈvɜːsli pəˈpɔːʃənl/", "vi": "Tỷ lệ nghịch"}]}, {"title": "2. Hình học (Geometry)", "items": [{"n": "1", "en": "Geometry", "ipa": "/dʒiˈɒmətri/", "vi": "Hình học"}, {"n": "2", "en": "Rectangle", "ipa": "/ˈrektæŋɡl/", "vi": "Hình chữ nhật"}, {"n": "3", "en": "Square", "ipa": "/skweə(r)/", "vi": "Hình vuông"}, {"n": "4", "en": "Triangle", "ipa": "/ˈtraɪæŋɡl/", "vi": "Hình tam giác"}, {"n": "5", "en": "Acute triangle", "ipa": "/əˈkjuːt ˈtraɪæŋɡl/", "vi": "Tam giác nhọn"}, {"n": "6", "en": "Obtuse triangle", "ipa": "/əbˈtjuːs ˈtraɪæŋɡl/", "vi": "Tam giác tù"}, {"n": "7", "en": "Right triangle / Right-angled triangle", "ipa": "/raɪt ˈtraɪæŋɡl/", "vi": "Tam giác vuông"}, {"n": "8", "en": "Equilateral triangle", "ipa": "/ˌiːkwɪˈlætərəl ˈtraɪæŋɡl/", "vi": "Tam giác đều"}, {"n": "9", "en": "Isosceles triangle", "ipa": "/aɪˈsɒsəliːz ˈtraɪæŋɡl/", "vi": "Tam giác cân"}, {"n": "10", "en": "Scalene triangle", "ipa": "/ˈskeɪliːn ˈtraɪæŋɡl/", "vi": "Tam giác thường"}, {"n": "11", "en": "Circle / Semicircle", "ipa": "/ˈsɜːkl/ - /ˈsemisɜːkl/", "vi": "Hình tròn / Nửa đường tròn"}, {"n": "12", "en": "Radius / Diameter", "ipa": "/ˈreɪdiəs/ - /daɪˈæmɪtə(r)/", "vi": "Bán kính / Đường kính"}, {"n": "13", "en": "Polygon / Quadrilateral", "ipa": "/ˈpɒlɪɡən/ - /ˌkwɒdrɪˈlætərəl/", "vi": "Đa giác / Tứ giác"}, {"n": "14", "en": "Pentagon / Hexagon", "ipa": "/ˈpentəɡən/ - /ˈheksəɡən/", "vi": "Hình ngũ giác / Hình lục giác"}, {"n": "15", "en": "Parallelogram / Rhombus", "ipa": "/ˌpærəˈleləɡræm/ - /ˈrɒmbəs/", "vi": "Hình bình hành / Hình thoi"}, {"n": "16", "en": "Trapezium / Trapezoid", "ipa": "/trəˈpiːziəm/ - /ˈtræpəzɔɪd/", "vi": "Hình thang"}, {"n": "17", "en": "Kite", "ipa": "/kaɪt/", "vi": "Hình cái diều"}, {"n": "18", "en": "Cuboid / Cube", "ipa": "/ˈkjuːbɔɪd/ - /kjuːb/", "vi": "Hình hộp chữ nhật / Hình lập phương"}, {"n": "19", "en": "Cylinder / Cone", "ipa": "/ˈsɪlɪndə(r)/ - /kəʊn/", "vi": "Hình trụ / Hình nón"}, {"n": "20", "en": "Pyramid / Regular pyramid", "ipa": "/ˈpɪrəmɪd/", "vi": "Hình chóp / Hình chóp đều"}, {"n": "21", "en": "Triangular pyramid / Truncated pyramid", "ipa": "/traɪˈæŋɡjələr ˈpɪrəmɪd/", "vi": "Hình chóp tam giác / Hình chóp cụt"}, {"n": "22", "en": "Area / Surface area", "ipa": "/ˈeəriə/ - /ˈsɜːfɪs ˈeəriə/", "vi": "Diện tích / Diện tích toàn phần"}, {"n": "23", "en": "Perimeter / Circumference", "ipa": "/pəˈrɪmɪtə(r)/ - /səˈkʌmfərəns/", "vi": "Chu vi / Chu vi đường tròn"}, {"n": "24", "en": "Length / Width / Height", "ipa": "/leŋkθ/ - /wɪdθ/ - /haɪt/", "vi": "Chiều dài / Chiều rộng / Chiều cao"}, {"n": "25", "en": "Side length / Dimension", "ipa": "/saɪd leŋkθ/ - /daɪˈmenʃn/", "vi": "Chiều dài cạnh / Kích thước"}, {"n": "26", "en": "Right angle / Angle", "ipa": "/raɪt ˈæŋɡl/ - /ˈæŋɡl/", "vi": "Góc vuông / Góc"}, {"n": "27", "en": "Adjacent", "ipa": "/əˈdʒeɪsnt/", "vi": "Kề bên, kế cận (cạnh kề, góc kề)"}, {"n": "28", "en": "Vertically opposite angle", "ipa": "/ˈvɜːtɪkli ˈɒpəzɪt ˈæŋɡl/", "vi": "Góc đối đỉnh"}, {"n": "29", "en": "Segment / Line segment", "ipa": "/ˈseɡmənt/ - /laɪn ˈseɡmənt/", "vi": "Đoạn thẳng"}, {"n": "30", "en": "Line / Straight line", "ipa": "/laɪn/ - /streɪt laɪn/", "vi": "Đường thẳng"}, {"n": "31", "en": "Horizontal line / Vertical line", "ipa": "/ˌhɒrɪˈzɒntl laɪn/", "vi": "Đường nằm ngang / Đường thẳng đứng"}, {"n": "32", "en": "Perpendicular", "ipa": "/ˌpɜːpənˈdɪkjələ(r)/", "vi": "Vuông góc"}, {"n": "33", "en": "Bisect", "ipa": "/baɪˈsekt/", "vi": "Phân giác (chia đôi)"}, {"n": "34", "en": "Diagonal", "ipa": "/daɪˈæɡənl/", "vi": "Đường chéo"}, {"n": "35", "en": "Midpoint / Intersection", "ipa": "/ˈmɪdpɔɪnt/ - /ˌɪntəˈsekʃn/", "vi": "Trung điểm / Giao điểm"}, {"n": "36", "en": "Vertex / Vertices", "ipa": "/ˈvɜːteks/ - /ˈvɜːtɪsiːz/", "vi": "Đỉnh / Các đỉnh"}, {"n": "37", "en": "Plane / Origin", "ipa": "/pleɪn/ - /ˈɒrɪdʒɪn/", "vi": "Mặt phẳng / Gốc tọa độ"}, {"n": "38", "en": "Lines of symmetry", "ipa": "/laɪnz əv ˈsɪmətri/", "vi": "Trục đối xứng"}, {"n": "39", "en": "Face / Base", "ipa": "/feɪs/ - /beɪs/", "vi": "Mặt (của hình khối) / Mặt đáy"}, {"n": "40", "en": "Shaded region / Solid object", "ipa": "/ˈʃeɪdɪd ˈriːdʒən/", "vi": "Phần tô đậm / Hình khối"}, {"n": "41", "en": "Volume", "ipa": "/ˈvɒljuːm/", "vi": "Thể tích"}]}, {"title": "3. Vị trí và Phương hướng (Position & Direction)", "items": [{"n": "1", "en": "Front face", "ipa": "/frʌnt feɪs/", "vi": "Mặt trước"}, {"n": "2", "en": "Bottom face", "ipa": "/ˈbɒtəm feɪs/", "vi": "Mặt đáy / dưới"}, {"n": "3", "en": "Right side face", "ipa": "/raɪt saɪd feɪs/", "vi": "Mặt bên phải"}, {"n": "4", "en": "Left side face", "ipa": "/left saɪd feɪs/", "vi": "Mặt bên trái"}, {"n": "5", "en": "Top face", "ipa": "/tɒp feɪs/", "vi": "Mặt trên"}, {"n": "6", "en": "Back face", "ipa": "/bæk feɪs/", "vi": "Mặt sau"}, {"n": "7", "en": "Middle", "ipa": "/ˈmɪdl/", "vi": "Ở chính giữa"}, {"n": "8", "en": "Move right / Move up", "ipa": "/muːv raɪt/ - /muːv ʌp/", "vi": "Đi sang phải / Đi lên trên"}, {"n": "9", "en": "Way / Route / Step", "ipa": "/weɪ/ - /ruːt/ - /step/", "vi": "Cách đi / Đường đi / Bước đi"}, {"n": "10", "en": "First / Last", "ipa": "/fɜːst/ - /lɑːst/", "vi": "Đầu tiên / Cuối cùng"}, {"n": "11", "en": "Right before / Right after", "ipa": "/raɪt bɪˈfɔː(r)/ - /raɪt ˈɑːftə(r)/", "vi": "Ngay trước / Ngay sau"}]}, {"title": "4. Xác suất, Thống kê và Biểu đồ (Probability & Statistics)", "items": [{"n": "1", "en": "Graph / Diagram", "ipa": "/ɡrɑːf/ - /ˈdaɪəɡræm/", "vi": "Biểu đồ, đồ thị, sơ đồ"}, {"n": "2", "en": "Pictograph", "ipa": "/ˈpɪktəɡrɑːf/", "vi": "Biểu đồ tranh"}, {"n": "3", "en": "Probability", "ipa": "/ˌprɒbəˈbɪləti/", "vi": "Xác suất"}, {"n": "4", "en": "Likely / Unlikely / Impossible", "ipa": "/ˈlaɪkli/ - /ɪmˈpɒsəbl/", "vi": "Có khả năng / Ít có khả năng / Không thể"}, {"n": "5", "en": "Randomly / At random", "ipa": "/ˈrændəmli/", "vi": "Ngẫu nhiên"}, {"n": "6", "en": "With repetition / Without repetition", "ipa": "/wɪð ˌrepəˈtɪʃn/", "vi": "Lặp lại / Không lặp lại"}, {"n": "7", "en": "Choose / Draw", "ipa": "/tʃuːz/ - /drɔː/", "vi": "Rút, chọn ra"}, {"n": "8", "en": "Column / Row", "ipa": "/ˈkɒləm/ - /rəʊ/", "vi": "Cột / Hàng"}, {"n": "9", "en": "Mode", "ipa": "/məʊd/", "vi": "Số trội (Yếu tố / Mốt)"}, {"n": "10", "en": "Mean", "ipa": "/miːn/", "vi": "Số trung bình"}]}, {"title": "5. Thuật ngữ chung, Tư duy logic (General & Logic Terms)", "items": [{"n": "1", "en": "Given that", "ipa": "/ˈɡɪvn ðæt/", "vi": "Biết rằng / Cho trước"}, {"n": "2", "en": "In total / Total / Altogether", "ipa": "/ɪn ˈtəʊtl/ - /ˌɔːltəˈɡeðə(r)/", "vi": "Tổng số / Tất cả"}, {"n": "3", "en": "Assume / Assumption", "ipa": "/əˈsjuːm/", "vi": "Giả sử / Giả thiết"}, {"n": "4", "en": "Constant", "ipa": "/ˈkɒnstənt/", "vi": "Hằng số"}, {"n": "5", "en": "Define / Symbol", "ipa": "/dɪˈfaɪn/ - /ˈsɪmbl/", "vi": "Định nghĩa / Kí hiệu"}, {"n": "6", "en": "Compare", "ipa": "/kəmˈpeə(r)/", "vi": "So sánh"}, {"n": "7", "en": "Increase / Decrease", "ipa": "/ɪnˈkriːs/ - /dɪˈkriːs/", "vi": "Tăng / Giảm"}, {"n": "8", "en": "Ascending order / Decreasing order / Ordering", "ipa": "/əˈsendɪŋ ˈɔːdə(r)/", "vi": "Thứ tự tăng dần / Giảm dần / Sự sắp xếp"}, {"n": "9", "en": "Smallest / Minimum", "ipa": "/ˈsmɔːlɪst/ - /ˈmɪnɪməm/", "vi": "Nhỏ nhất / Tối thiểu"}, {"n": "10", "en": "Greatest / Maximum / Largest", "ipa": "/ˈɡreɪtɪst/ - /ˈmæksɪməm/", "vi": "Lớn nhất / Tối đa"}, {"n": "11", "en": "Guarantee / Ensure", "ipa": "/ˌɡærənˈtiː/ - /ɪnˈʃʊə(r)/", "vi": "Chắc chắn, đảm bảo"}, {"n": "12", "en": "Exist / Insufficient / Excessive", "ipa": "/ɪɡˈzɪst/ - /ˌɪnsəˈfɪʃnt/", "vi": "Tồn tại / Thiếu, không đủ / Thừa ra"}, {"n": "13", "en": "Capacity / Weight / Mass", "ipa": "/kəˈpæsəti/ - /weɪt/ - /mæs/", "vi": "Dung tích / Cân nặng / Khối lượng"}, {"n": "14", "en": "Distance / Speed / Velocity", "ipa": "/ˈdɪstəns/ - /spiːd/ - /vəˈlɒsəti/", "vi": "Khoảng cách / Tốc độ / Vận tốc"}, {"n": "15", "en": "Fold / Inverse / Backwards from the end", "ipa": "/fəʊld/ - /ˌɪnˈvɜːs/", "vi": "Gấp (giấy) / Ngược lại / Suy ngược từ cuối"}, {"n": "16", "en": "Prove / Theorem / Formula", "ipa": "/pruːv/ - /ˈθɪərəm/ - /ˈfɔːmjələ/", "vi": "Chứng minh / Định lý / Công thức"}, {"n": "17", "en": "Solution / Solve / Express", "ipa": "/səˈluːʃn/ - /sɒlv/ - /ɪkˈspres/", "vi": "Lời giải / Giải / Biểu diễn"}, {"n": "18", "en": "Percent / Percentage / Scale", "ipa": "/pəˈsent/ - /skeɪl/", "vi": "Phần trăm / Tỉ lệ / Thang đo"}, {"n": "19", "en": "Rate / Ratio / Respectively", "ipa": "/reɪt/ - /ˈreɪʃiəʊ/ - /rɪˈspektɪvli/", "vi": "Tỷ lệ / Tỷ số / Lần lượt"}, {"n": "20", "en": "Transformation", "ipa": "/ˌtrænsfəˈmeɪʃn/", "vi": "Biến đổi"}]}];
+const synth = window.speechSynthesis;
+let voices = [];
+let currentSection = 0;
+let currentIndex = 0;
+let runToken = 0;
+let paused = false;
+
+const $ = id => document.getElementById(id);
+const sectionSel = $("section");
+const viVoiceSel = $("viVoice");
+const enVoiceSel = $("enVoice");
+
+sections.forEach((s,i) => {
+  const o=document.createElement("option");
+  o.value=i; o.textContent=s.title;
+  sectionSel.appendChild(o);
+});
+
+function normalizeLang(s) { return (s || "").toLowerCase(); }
+
+function loadVoices() {
+  voices = synth.getVoices() || [];
+  const previousVi = viVoiceSel.value;
+  const previousEn = enVoiceSel.value;
+  viVoiceSel.innerHTML="";
+  enVoiceSel.innerHTML="";
+
+  function addOptions(select, preferredPrefix) {
+    const matching = voices.filter(v => normalizeLang(v.lang).startsWith(preferredPrefix));
+    const source = matching.length ? matching : voices;
+    source.forEach((v, idx) => {
+      const o=document.createElement("option");
+      o.value = voices.indexOf(v);
+      o.textContent = `${v.name} (${v.lang || "unknown"})${v.localService ? " — Local" : ""}`;
+      select.appendChild(o);
+    });
+    if (!source.length) {
+      const o=document.createElement("option");
+      o.value=""; o.textContent="No voices found";
+      select.appendChild(o);
+    }
+  }
+
+  addOptions(viVoiceSel, "vi");
+  addOptions(enVoiceSel, "en");
+
+  // Try to pick a Vietnamese voice, and a UK/US English voice.
+  const viIdx = voices.findIndex(v => normalizeLang(v.lang).startsWith("vi"));
+  const enIdx = voices.findIndex(v => /^en-(gb|us)/i.test(v.lang || "")) >= 0
+      ? voices.findIndex(v => /^en-(gb|us)/i.test(v.lang || ""))
+      : voices.findIndex(v => normalizeLang(v.lang).startsWith("en"));
+  if (viIdx >= 0) viVoiceSel.value = String(viIdx);
+  if (enIdx >= 0) enVoiceSel.value = String(enIdx);
+
+  if (previousVi && [...viVoiceSel.options].some(o=>o.value===previousVi)) viVoiceSel.value=previousVi;
+  if (previousEn && [...enVoiceSel.options].some(o=>o.value===previousEn)) enVoiceSel.value=previousEn;
+}
+loadVoices();
+if ("onvoiceschanged" in synth) synth.onvoiceschanged = loadVoices;
+setTimeout(loadVoices, 400);
+setTimeout(loadVoices, 1200);
+
+function item() { return sections[currentSection].items[currentIndex]; }
+
+function render() {
+  const it=item();
+  $("viText").textContent=it.vi;
+  $("enText").textContent=it.en;
+  $("ipaText").textContent=it.ipa;
+  $("counter").textContent=`Word ${currentIndex+1} of ${sections[currentSection].items.length}`;
+  renderTable();
+}
+function renderTable() {
+  const tb=$("wordRows"); tb.innerHTML="";
+  sections[currentSection].items.forEach((it,i)=>{
+    const tr=document.createElement("tr");
+    if (i===currentIndex) tr.className="current";
+    tr.innerHTML=`<td>${escapeHtml(it.n)}</td><td>${escapeHtml(it.vi)}</td><td>${escapeHtml(it.en)}</td><td>${escapeHtml(it.ipa)}</td>`;
+    tr.style.cursor="pointer";
+    tr.onclick=()=>{ stopSpeech(); currentIndex=i; render(); };
+    tb.appendChild(tr);
+  });
+}
+function escapeHtml(x) {
+  return String(x).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]);
+}
+
+function getSelectedVoice(select) {
+  const idx = Number(select.value);
+  return Number.isFinite(idx) ? voices[idx] : null;
+}
+
+function speak(text, lang, voice, token) {
+  return new Promise(resolve => {
+    if (token !== runToken || !text) return resolve();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang;
+    if (voice) u.voice=voice;
+    u.rate = Number($("rate").value);
+    u.pitch = 1;
+    u.volume = 1;
+    u.onend=()=>resolve();
+    u.onerror=()=>resolve();
+    synth.speak(u);
+  });
+}
+function wait(ms, token) {
+  return new Promise(resolve => {
+    const start=Date.now();
+    const tick=()=>{
+      if (token !== runToken) return resolve();
+      if (paused) return setTimeout(tick,100);
+      if (Date.now()-start >= ms) return resolve();
+      setTimeout(tick,80);
+    };
+    tick();
+  });
+}
+
+function englishParts(text) {
+  // Source rows sometimes contain alternative English terms separated by " / ".
+  return text.split(/\s+\/\s+/).map(s=>s.trim()).filter(Boolean);
+}
+
+async function playItem(index, token) {
+  const it = sections[currentSection].items[index];
+  const viVoice=getSelectedVoice(viVoiceSel);
+  const enVoice=getSelectedVoice(enVoiceSel);
+  const viLang = viVoice?.lang || "vi-VN";
+  const enLang = enVoice?.lang || "en-GB";
+  const reps = Number($("repeat").value);
+  const parts = englishParts(it.en);
+  const order = $("order").value;
+
+  currentIndex=index; render();
+
+  if (order==="vi-en") {
+    $("status").textContent="Vietnamese";
+    await speak(it.vi, viLang, viVoice, token);
+    await wait(350, token);
+    for (const part of parts) {
+      for (let r=0;r<reps;r++) {
+        if (token!==runToken) return;
+        $("status").textContent = `English${reps>1 ? ` — repetition ${r+1}` : ""}`;
+        await speak(part, enLang, enVoice, token);
+        await wait(350, token);
+      }
+    }
+  } else {
+    for (const part of parts) {
+      for (let r=0;r<reps;r++) {
+        if (token!==runToken) return;
+        $("status").textContent = `English${reps>1 ? ` — repetition ${r+1}` : ""}`;
+        await speak(part, enLang, enVoice, token);
+        await wait(350, token);
+      }
+    }
+    $("status").textContent="Vietnamese";
+    await speak(it.vi, viLang, viVoice, token);
+  }
+
+  $("status").textContent="Your turn — repeat";
+  await wait(Number($("pause").value)*1000, token);
+  if (token===runToken) $("status").textContent="";
+}
+
+async function playCurrent() {
+  stopSpeech();
+  const token=runToken;
+  await playItem(currentIndex, token);
+}
+
+async function playSection() {
+  stopSpeech();
+  const token=runToken;
+  for (let i=currentIndex;i<sections[currentSection].items.length;i++) {
+    if (token!==runToken) return;
+    await playItem(i, token);
+    await wait(250, token);
+  }
+  if (token===runToken) $("status").textContent="Section finished ✓";
+}
+
+function stopSpeech() {
+  runToken++;
+  paused=false;
+  synth.cancel();
+  $("status").textContent="";
+  $("pauseBtn").textContent="⏸ Pause / Resume";
+}
+
+$("section").onchange=()=>{
+  stopSpeech();
+  currentSection=Number(sectionSel.value);
+  currentIndex=0;
+  render();
+};
+$("prev").onclick=()=>{
+  stopSpeech();
+  currentIndex=Math.max(0,currentIndex-1); render();
+};
+$("next").onclick=()=>{
+  stopSpeech();
+  currentIndex=Math.min(sections[currentSection].items.length-1,currentIndex+1); render();
+};
+$("playOne").onclick=playCurrent;
+$("playAll").onclick=playSection;
+$("stopBtn").onclick=stopSpeech;
+$("pauseBtn").onclick=()=>{
+  if (synth.speaking) {
+    if (synth.paused) {
+      synth.resume(); paused=false; $("pauseBtn").textContent="⏸ Pause / Resume";
+    } else {
+      synth.pause(); paused=true; $("pauseBtn").textContent="▶ Resume";
+    }
+  }
+};
+
+$("testVi").onclick=()=>{
+  stopSpeech(); const token=runToken;
+  const v=getSelectedVoice(viVoiceSel);
+  speak("Xin chào. Đây là giọng tiếng Việt.", v?.lang || "vi-VN", v, token);
+};
+$("testEn").onclick=()=>{
+  stopSpeech(); const token=runToken;
+  const v=getSelectedVoice(enVoiceSel);
+  speak("Hello. This is the English voice.", v?.lang || "en-GB", v, token);
+};
+
+$("rate").oninput=()=>$("rateOut").textContent=Number($("rate").value).toFixed(2)+"×";
+$("pause").oninput=()=>$("pauseOut").textContent=$("pause").value+" s";
+
+$("voicesBtn").onclick=()=>{
+  loadVoices();
+  const box=$("voiceList");
+  if (box.style.display==="block") {
+    box.style.display="none";
+    $("voicesBtn").textContent="Show voices on this computer";
+    return;
+  }
+  box.style.display="block";
+  $("voicesBtn").textContent="Hide voice list";
+  if (!voices.length) {
+    box.textContent="No speech voices were returned by this browser.";
+  } else {
+    box.textContent = voices.map(v =>
+      `${v.name} — ${v.lang || "unknown"}${v.localService ? " — Local" : ""}`
+    ).join("\n");
+  }
+};
+
+render();
+</script>
+</body>
+</html>
