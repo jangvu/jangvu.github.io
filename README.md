@@ -16,10 +16,11 @@ The website uses plain HTML, CSS, and JavaScript. No build command or package in
 
 ```text
 index.html
+publications.html
 assets/
   style.css
   site.js
   CV_HoangGiangVU.pdf
 ```
 
-Update text in `index.html`, visual styling in `assets/style.css`, and mobile-menu behavior in `assets/site.js`.
+Update the short profile in `index.html`, publication records in `publications.html`, visual styling in `assets/style.css`, and mobile-menu behavior in `assets/site.js`.
